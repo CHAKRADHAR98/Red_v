@@ -37,7 +37,7 @@ export default function WalletInfo({ wallet }: WalletInfoProps) {
         {wallet.type && (
           <div>
             <h3 className="text-sm font-medium text-gray-500">Type</h3>
-            <p className="text-lg font-medium capitalize">{wallet.type}</p>
+            <p className="text-lg font-medium capitalize">{wallet.type.replace(/_/g, ' ')}</p>
           </div>
         )}
         
@@ -54,7 +54,61 @@ export default function WalletInfo({ wallet }: WalletInfoProps) {
             <p className="text-sm">{formatDistanceToNow(wallet.lastActivityAt)} ago</p>
           </div>
         )}
+        
+        {/* Protocol information */}
+        {wallet.protocolId && (
+          <div className="col-span-2 p-3 mt-2 bg-blue-50 rounded">
+            <h3 className="text-sm font-medium text-blue-800">Protocol Association</h3>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <div>
+                <h4 className="text-xs font-medium text-gray-500">Protocol</h4>
+                <p className="text-sm font-medium">{wallet.protocolName}</p>
+              </div>
+              <div>
+                <h4 className="text-xs font-medium text-gray-500">Category</h4>
+                <p className="text-sm font-medium capitalize">{wallet.protocolCategory}</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      
+      {/* Protocol interactions summary */}
+      {wallet.protocolInteractions && wallet.protocolInteractions.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-medium text-gray-500">Protocol Interactions</h3>
+          <div className="overflow-auto max-h-40">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Protocol</th>
+                  <th className="px-3 py-2 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Category</th>
+                  <th className="px-3 py-2 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Interactions</th>
+                  <th className="px-3 py-2 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Last</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {wallet.protocolInteractions.map((interaction, index) => (
+                  <tr key={index}>
+                    <td className="px-3 py-2 text-sm font-medium text-gray-900">
+                      {interaction.protocolName}
+                    </td>
+                    <td className="px-3 py-2 text-sm capitalize text-gray-500">
+                      {interaction.category}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-right text-gray-500">
+                      {interaction.interactionCount}
+                    </td>
+                    <td className="px-3 py-2 text-sm text-right text-gray-500">
+                      {formatDistanceToNow(interaction.lastInteraction)} ago
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
       
       {wallet.tokenBalances && wallet.tokenBalances.length > 0 && (
         <div className="mt-4">

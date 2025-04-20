@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import * as d3 from 'd3';
-import { Wallet, WalletConnection } from '../../types/wallet';
+import { Wallet, WalletConnection, WalletType } from '../../types/wallet';
+import { ProtocolCategory } from '../../types/protocol';
 
 interface Node extends d3.SimulationNodeDatum {
   id: string;
@@ -9,6 +10,9 @@ interface Node extends d3.SimulationNodeDatum {
   type: string;
   transactionCount: number;
   isMainWallet?: boolean;
+  protocolId?: string;
+  protocolName?: string;
+  protocolCategory?: string;
 }
 
 interface Link extends d3.SimulationLinkDatum<Node> {
@@ -16,6 +20,9 @@ interface Link extends d3.SimulationLinkDatum<Node> {
   target: string | Node;
   value: number;
   transactions: number;
+  protocolId?: string;
+  protocolName?: string;
+  category?: string;
 }
 
 interface BasicGraphProps {
@@ -64,10 +71,13 @@ export default function BasicGraph({
       const nodes: Node[] = wallets.map(wallet => ({
         id: wallet.address,
         balance: wallet.balance || 1000, // Use a minimum for visualization
-        label: wallet.label || wallet.address.slice(0, 6) + '...' + wallet.address.slice(-4),
-        type: determineWalletType(wallet, connections),
+        label: formatWalletLabel(wallet),
+        type: determineNodeType(wallet),
         transactionCount: wallet.transactionCount || 1,
-        isMainWallet: wallet.address === mainWallet.address
+        isMainWallet: wallet.address === mainWallet.address,
+        protocolId: wallet.protocolId,
+        protocolName: wallet.protocolName,
+        protocolCategory: wallet.protocolCategory
       }));
 
       // Ensure all nodes referenced in connections exist
@@ -79,10 +89,13 @@ export default function BasicGraph({
           missingNodes.push({
             id: conn.source,
             balance: 500,  // Default value for visualization
-            label: conn.source.slice(0, 6) + '...',
-            type: 'unknown',
+            label: formatUnknownNodeLabel(conn.source, conn.protocolName),
+            type: getTypeFromProtocolCategory(conn.category),
             transactionCount: conn.transactions,
-            isMainWallet: false
+            isMainWallet: false,
+            protocolId: conn.protocolId,
+            protocolName: conn.protocolName,
+            protocolCategory: conn.category
           });
           nodeIds.add(conn.source);
         }
@@ -91,10 +104,13 @@ export default function BasicGraph({
           missingNodes.push({
             id: conn.target,
             balance: 500,  // Default value for visualization
-            label: conn.target.slice(0, 6) + '...',
-            type: 'unknown',
+            label: formatUnknownNodeLabel(conn.target, conn.protocolName),
+            type: getTypeFromProtocolCategory(conn.category),
             transactionCount: conn.transactions,
-            isMainWallet: false
+            isMainWallet: false,
+            protocolId: conn.protocolId,
+            protocolName: conn.protocolName,
+            protocolCategory: conn.category
           });
           nodeIds.add(conn.target);
         }
@@ -107,12 +123,19 @@ export default function BasicGraph({
         source: connection.source,
         target: connection.target,
         value: connection.value || 1,  // Use 1 as minimum for visualization
-        transactions: connection.transactions
+        transactions: connection.transactions,
+        protocolId: connection.protocolId,
+        protocolName: connection.protocolName,
+        category: connection.category
       }));
 
-      // Create a color scale for node types with improved colors
+      // Create a color scale for node types with improved colors and protocol-specific colors
       const colorScale = d3.scaleOrdinal<string>()
-        .domain(['unknown', 'exchange', 'protocol', 'user', 'contract', 'high_volume', 'main'])
+        .domain([
+          'unknown', 'exchange', 'protocol', 'user', 'contract', 'high_volume', 'main',
+          // Protocol-specific types
+          'dex', 'lending', 'nft_marketplace', 'staking', 'yield', 'bridge', 'governance'
+        ])
         .range([
           '#9ca3af', // gray for unknown
           '#60a5fa', // blue for exchange
@@ -120,7 +143,29 @@ export default function BasicGraph({
           '#fbbf24', // yellow for user
           '#f87171', // red for contract
           '#a78bfa', // purple for high volume
-          '#f97316'  // orange for main wallet
+          '#f97316', // orange for main wallet
+          // Protocol-specific colors
+          '#3b82f6', // blue for DEXes
+          '#10b981', // green for lending
+          '#f43f5e', // pink for NFT marketplaces
+          '#8b5cf6', // purple for staking
+          '#06b6d4', // cyan for yield
+          '#6366f1', // indigo for bridges
+          '#ec4899'  // pink for governance
+        ]);
+
+      // Create a color scale for links based on protocol categories
+      const linkColorScale = d3.scaleOrdinal<string>()
+        .domain(['unknown', 'dex', 'lending', 'nft', 'staking', 'yield', 'bridge', 'governance'])
+        .range([
+          '#9ca3af', // gray for unknown
+          '#3b82f6', // blue for DEXes
+          '#10b981', // green for lending
+          '#f43f5e', // pink for NFTs
+          '#8b5cf6', // purple for staking
+          '#06b6d4', // cyan for yield
+          '#6366f1', // indigo for bridges
+          '#ec4899'  // pink for governance
         ]);
 
       // Create the simulation with improved forces
@@ -150,14 +195,28 @@ export default function BasicGraph({
       // Create a container for all visualized elements
       const container = svg.append('g');
 
-      // Create the links with improved styling
+      // Create the links with improved styling based on protocol
       const link = container.append('g')
         .selectAll('line')
         .data(links)
         .join('line')
-        .attr('stroke', '#999')
+        .attr('stroke', d => {
+          if (d.category) {
+            return linkColorScale(d.category);
+          }
+          return '#999';
+        })
         .attr('stroke-opacity', 0.6)
-        .attr('stroke-width', d => Math.sqrt(d.transactions) + 1);
+        .attr('stroke-width', d => Math.sqrt(d.transactions) + 1)
+        // Add title for tooltip on hover
+        .append('title')
+        .text(d => {
+          let tooltipText = `${d.transactions} transactions`;
+          if (d.protocolName) {
+            tooltipText += ` via ${d.protocolName}`;
+          }
+          return tooltipText;
+        });
 
       // Create node groups for better organization
       const nodeGroup = container.append('g')
@@ -169,7 +228,8 @@ export default function BasicGraph({
           // Highlight connected links on hover
           link
             .attr('stroke', l => 
-              ((l.source as any).id === d.id || (l.target as any).id === d.id) ? '#ff0000' : '#999'
+              ((l.source as any).id === d.id || (l.target as any).id === d.id) ? '#ff0000' : 
+                (l as any).category ? linkColorScale((l as any).category) : '#999'
             )
             .attr('stroke-opacity', l => 
               ((l.source as any).id === d.id || (l.target as any).id === d.id) ? 0.9 : 0.2
@@ -188,7 +248,8 @@ export default function BasicGraph({
                 <div class="font-bold">${d.label}</div>
                 <div>Balance: ${formatBalance(d.balance || 0)} SOL</div>
                 <div>Transactions: ${d.transactionCount || 0}</div>
-                <div>Type: ${d.type}</div>
+                <div>Type: ${formatNodeType(d)}</div>
+                ${d.protocolName ? `<div class="text-blue-600">Protocol: ${d.protocolName}</div>` : ''}
               </div>
             `)
             .style('left', (event.pageX + 10) + 'px')
@@ -197,7 +258,7 @@ export default function BasicGraph({
         .on('mouseout', function() {
           // Reset links on mouseout
           link
-            .attr('stroke', '#999')
+            .attr('stroke', l => (l as any).category ? linkColorScale((l as any).category) : '#999')
             .attr('stroke-opacity', 0.6)
             .attr('stroke-width', d => Math.sqrt(d.transactions) + 1);
             
@@ -205,18 +266,42 @@ export default function BasicGraph({
           tooltip.style('opacity', 0);
         });
 
-      // Add circles to the node groups
+      // Add circles to the node groups with protocol-aware styling
       nodeGroup.append('circle')
         .attr('r', d => calculateNodeSize(d))
-        .attr('fill', d => d.isMainWallet ? colorScale('main') : colorScale(d.type))
-        .attr('stroke', d => d.isMainWallet ? '#000' : 'none')
-        .attr('stroke-width', d => d.isMainWallet ? 2 : 0);
+        .attr('fill', d => {
+          // Protocol-specific styling takes precedence if available
+          if (d.protocolCategory) {
+            return colorScale(getTypeFromProtocolCategory(d.protocolCategory));
+          }
+          return d.isMainWallet ? colorScale('main') : colorScale(d.type);
+        })
+        .attr('stroke', d => {
+          // Add distinctive stroke for protocol-affiliated wallets
+          if (d.protocolId) return '#000';
+          return d.isMainWallet ? '#000' : 'none';
+        })
+        .attr('stroke-width', d => {
+          // Thicker stroke for protocol-affiliated wallets
+          if (d.protocolId) return 1.5;
+          return d.isMainWallet ? 2 : 0;
+        });
+
+      // Add protocol indicators for protocol-affiliated wallets (with null check)
+      nodeGroup.filter(d => d.protocolId != null && d.protocolId !== undefined)
+        .append('circle')
+        .attr('r', 4)
+        .attr('cx', d => calculateNodeSize(d) * 0.7)
+        .attr('cy', d => -calculateNodeSize(d) * 0.7)
+        .attr('fill', d => colorScale(getTypeFromProtocolCategory(d.protocolCategory || '')))
+        .attr('stroke', '#fff')
+        .attr('stroke-width', 1);
 
       // Add labels to the node groups with better positioning
       nodeGroup.append('text')
         .text(d => d.label)
         .attr('font-size', d => d.isMainWallet ? 12 : 10)
-        .attr('font-weight', d => d.isMainWallet ? 'bold' : 'normal')
+        .attr('font-weight', d => d.isMainWallet || d.protocolId ? 'bold' : 'normal')
         .attr('dx', d => calculateNodeSize(d) + 2)
         .attr('dy', 4)
         .attr('pointer-events', 'none'); // Prevent the text from intercepting mouse events
@@ -250,14 +335,88 @@ export default function BasicGraph({
         const baseSize = Math.sqrt(d.balance || 1000) / 5000 + 5;
         const transactionBonus = Math.sqrt(d.transactionCount || 1) / 2;
         const mainBonus = d.isMainWallet ? 5 : 0;
-        return baseSize + transactionBonus + mainBonus;
+        const protocolBonus = d.protocolId ? 3 : 0;
+        return baseSize + transactionBonus + mainBonus + protocolBonus;
       }
 
+      // Helper function to format wallet label
+      function formatWalletLabel(wallet: Wallet): string {
+        if (wallet.label) return wallet.label;
+        if (wallet.protocolName) return wallet.protocolName;
+        return wallet.address.slice(0, 6) + '...' + wallet.address.slice(-4);
+      }
+
+      // Helper function to format unknown node label
+      function formatUnknownNodeLabel(address: string, protocolName?: string): string {
+        if (protocolName) return `${protocolName} (${address.slice(0, 4)}...)`;
+        return address.slice(0, 6) + '...' + address.slice(-4);
+      }
+
+      // Helper function to format node type with protocol information
+      function formatNodeType(d: Node): string {
+        if (d.protocolName) {
+          return `${d.type} (${d.protocolName})`;
+        }
+        return d.type.replace(/_/g, ' ');
+      }
+      
       // Helper function to format balance
       function formatBalance(balance: number): string {
         const solBalance = balance / 1e9;
         if (solBalance < 0.01) return '<0.01';
         return solBalance.toFixed(2);
+      }
+      
+      // Helper function to get wallet type from protocol category
+      function getTypeFromProtocolCategory(category?: string): string {
+        if (!category) return 'unknown';
+        
+        switch(category) {
+          case 'dex':
+            return 'dex';
+          case 'lending':
+            return 'lending';
+          case 'nft':
+            return 'nft_marketplace';
+          case 'staking':
+            return 'staking';
+          case 'yield':
+            return 'yield';
+          case 'bridge':
+            return 'bridge';
+          case 'governance':
+            return 'governance';
+          default:
+            return 'protocol';
+        }
+      }
+      
+      // Helper function to determine node type
+      function determineNodeType(wallet: Wallet): string {
+        // If wallet has protocol information, use that to determine type
+        if (wallet.protocolCategory) {
+          return getTypeFromProtocolCategory(wallet.protocolCategory);
+        }
+        
+        // Use the wallet type if available
+        if (wallet.type) {
+          return wallet.type;
+        }
+        
+        // Count connections for this wallet
+        const connectionCount = connections.filter(
+          conn => conn.source === wallet.address || conn.target === wallet.address
+        ).length;
+        
+        // Check if it's a high volume wallet by connection count
+        if (connectionCount > 3) return 'high_volume';
+        
+        // Try to guess based on balance
+        if (wallet.balance > 10 * 1e9) return 'exchange'; // > 10 SOL might be an exchange
+        if (wallet.balance > 1 * 1e9) return 'user';     // > 1 SOL likely a user
+        
+        // Default
+        return 'unknown';
       }
 
       // Create drag behavior
@@ -305,27 +464,6 @@ export default function BasicGraph({
         .text('Error rendering visualization');
     }
   }, [wallets, connections, width, height]);
-
-  // Helper function to determine wallet type based on its characteristics
-  function determineWalletType(wallet: Wallet, connections: WalletConnection[]): string {
-    // Count connections for this wallet
-    const connectionCount = connections.filter(
-      conn => conn.source === wallet.address || conn.target === wallet.address
-    ).length;
-    
-    // Check if it's a high volume wallet by connection count
-    if (connectionCount > 3) return 'high_volume';
-    
-    // Use the existing type if available
-    if (wallet.type) return wallet.type;
-    
-    // Try to guess based on balance
-    if (wallet.balance > 10 * 1e9) return 'exchange'; // > 10 SOL might be an exchange
-    if (wallet.balance > 1 * 1e9) return 'user';     // > 1 SOL likely a user
-    
-    // Default
-    return 'unknown';
-  }
 
   return (
     <div className="overflow-hidden bg-white rounded shadow">
