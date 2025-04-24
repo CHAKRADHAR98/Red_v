@@ -32,6 +32,16 @@ export default function Navigation() {
                 Wallet Explorer
               </Link>
               <Link
+                href="/enhanced"
+                className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
+                  isActive('/enhanced') 
+                    ? 'border-blue-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Enhanced Explorer
+              </Link>
+              <Link
                 href="/visualize"
                 className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
                   isActive('/visualize') 
@@ -45,7 +55,7 @@ export default function Navigation() {
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
             <span className="px-3 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">
-              Stage 1 - Foundation
+              Stage 2 - Enhanced Analysis
             </span>
           </div>
         </div>
@@ -63,6 +73,16 @@ export default function Navigation() {
             }`}
           >
             Wallet Explorer
+          </Link>
+          <Link
+            href="/enhanced"
+            className={`block py-2 pl-3 pr-4 text-base font-medium ${
+              isActive('/enhanced') 
+                ? 'bg-blue-50 border-l-4 border-blue-500 text-blue-700'
+                : 'border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+            }`}
+          >
+            Enhanced Explorer
           </Link>
           <Link
             href="/visualize"

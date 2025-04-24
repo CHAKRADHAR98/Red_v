@@ -9,7 +9,7 @@ import EnvChecker from '../components/ui/EnvChecker';
 
 export default function Home() {
   const [searchAddress, setSearchAddress] = useState<string>('');
-  
+
   const { 
     wallet, 
     transactions, 
@@ -24,7 +24,7 @@ export default function Home() {
   return (
     <div className="space-y-6">
       <EnvChecker />
-      
+
       <div className="p-4 bg-white rounded shadow">
         <h2 className="mb-4 text-xl font-semibold">Search for a Wallet</h2>
         <WalletSearch onSearch={handleSearch} />

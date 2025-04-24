@@ -7,11 +7,7 @@ export interface Wallet {
   type?: WalletType;
   firstActivityAt?: Date;
   lastActivityAt?: Date;
-  // New fields for protocol intelligence
-  protocolId?: string;
-  protocolName?: string;
-  protocolCategory?: string;
-  protocolInteractions?: ProtocolInteractionSummary[];
+  name?: string; // Added: Name resolution from Solana Name Service
 }
 
 export interface TokenBalance {
@@ -28,14 +24,7 @@ export enum WalletType {
   PROTOCOL = 'protocol',
   USER = 'user',
   CONTRACT = 'contract',
-  // New types for more specific classification
-  DEX = 'dex',
-  LENDING = 'lending',
-  NFT_MARKETPLACE = 'nft_marketplace',
-  STAKING = 'staking',
-  YIELD = 'yield',
-  BRIDGE = 'bridge',
-  GOVERNANCE = 'governance',
+  NFT_COLLECTOR = 'nft_collector', // Added: For wallets with many NFT transactions
 }
 
 export interface WalletConnection {
@@ -43,18 +32,5 @@ export interface WalletConnection {
   target: string;
   value: number;
   transactions: number;
-  lastInteraction: Date;
-  // New fields for protocol intelligence
-  protocolId?: string;
-  protocolName?: string;
-  category?: string;
-}
-
-// New interface for summarizing protocol interactions
-export interface ProtocolInteractionSummary {
-  protocolId: string;
-  protocolName: string;
-  category: string;
-  interactionCount: number;
   lastInteraction: Date;
 }

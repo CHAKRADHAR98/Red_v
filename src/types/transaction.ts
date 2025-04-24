@@ -9,9 +9,8 @@ export interface Transaction {
   accounts: string[];
   tokenTransfers?: TokenTransfer[];
   programIds?: string[];
-  // New fields for protocol intelligence
-  protocols?: ProtocolInteraction[];
-  description?: string;
+  protocol?: string;       // Added: Name of the primary protocol
+  protocolCategory?: string; // Added: Category of the primary protocol
 }
 
 export enum TransactionStatus {
@@ -31,12 +30,10 @@ export enum TransactionType {
   UNSTAKE = 'unstake',
   LIQUIDITY_ADD = 'liquidity_add',
   LIQUIDITY_REMOVE = 'liquidity_remove',
-  LENDING_DEPOSIT = 'lending_deposit',
-  LENDING_WITHDRAW = 'lending_withdraw',
-  LENDING_BORROW = 'lending_borrow',
-  LENDING_REPAY = 'lending_repay',
-  GOVERNANCE_VOTE = 'governance_vote',
-  BRIDGE_TRANSFER = 'bridge_transfer',
+  BORROW = 'borrow',    // Added: New transaction type
+  REPAY = 'repay',      // Added: New transaction type
+  YIELD = 'yield',      // Added: New transaction type
+  GOVERNANCE = 'governance', // Added: New transaction type
 }
 
 export interface TokenTransfer {
@@ -46,14 +43,4 @@ export interface TokenTransfer {
   mint: string;
   tokenStandard?: string;
   symbol?: string;
-}
-
-// New interface for protocol interactions
-export interface ProtocolInteraction {
-  protocolId: string;
-  protocolName: string;
-  programId: string;
-  category: string;
-  action?: string;
-  description?: string;
 }

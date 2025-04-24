@@ -1,11 +1,10 @@
+// src/lib/utils/transformers.ts.new
 import { Transaction, TransactionStatus, TransactionType, TokenTransfer } from '../../types/transaction';
-import { Wallet, WalletConnection, WalletType } from '../../types/wallet';
-import { ProtocolCategory } from '../../types/protocol';
-import { PROGRAM_ID_TO_PROTOCOL } from '../../data/protocols';
+import { Wallet, WalletConnection } from '../../types/wallet';
+import { determinePrimaryProtocol, getProtocolInfo } from '../data/program-id-mappings';
 
 /**
  * Transform raw Helius transaction data into our application's Transaction type
- * with enhanced protocol detection
  */
 export function transformHeliusTransaction(rawTransaction: any): Transaction | null {
   if (!rawTransaction) return null;
@@ -21,14 +20,18 @@ export function transformHeliusTransaction(rawTransaction: any): Transaction | n
         fee: rawTransaction.fee || 0,
         status: rawTransaction.err ? TransactionStatus.FAILED : TransactionStatus.SUCCESS,
         accounts: [],
-        programIds: rawTransaction.programIds || [], // Use provided program IDs if available
-        type: determineTransactionTypeFromProgramIds(rawTransaction.programIds || []) // Try to determine type from program IDs
+        programIds: [],
+        type: TransactionType.UNKNOWN,
       };
     }
     
-    // Handle full transaction data
+    // Extract program IDs from the transaction
     const programIds = extractProgramIds(rawTransaction);
     
+    // Get the primary protocol information
+    const protocolInfo = determinePrimaryProtocol(programIds);
+    
+    // Handle full transaction data
     const transaction: Transaction = {
       signature: rawTransaction.transaction?.signatures?.[0] || rawTransaction.signature || '',
       timestamp: new Date((rawTransaction.blockTime || 0) * 1000),
@@ -39,7 +42,9 @@ export function transformHeliusTransaction(rawTransaction: any): Transaction | n
       accounts: rawTransaction.transaction?.message?.accountKeys?.map((key: any) => 
         typeof key === 'string' ? key : key.pubkey
       ) || [],
-      programIds: programIds
+      programIds,
+      protocol: protocolInfo ? protocolInfo.name : undefined,
+      protocolCategory: protocolInfo ? protocolInfo.category : undefined,
     };
     
     // Extract token transfers if available
@@ -95,38 +100,9 @@ export function transformHeliusTransaction(rawTransaction: any): Transaction | n
       }
     }
     
-    // Check for Helius-specific enriched data
-    if (rawTransaction.parsedInstruction?.length > 0) {
-      // Process Helius parsed instructions to get more context
-      for (const instruction of rawTransaction.parsedInstruction) {
-        if (instruction.program === 'spl-token' && instruction.parsed.type === 'transfer') {
-          // It's a token transfer with detailed information
-          transaction.type = TransactionType.TOKEN_TRANSFER;
-        }
-      }
-    }
-    
-    // Determine transaction type
+    // Determine transaction type based on available data
     if (!transaction.type) {
-      transaction.type = determineTransactionType(rawTransaction, programIds);
-    }
-    
-    // If we have native transfers, it's a SOL transfer
-    if (rawTransaction.meta?.innerInstructions) {
-      const hasSystemTransfer = rawTransaction.meta.innerInstructions.some((inner: any) =>
-        inner.instructions?.some((ix: any) => 
-          ix.program === 'system' && ix.parsed?.type === 'transfer'
-        )
-      );
-      
-      if (hasSystemTransfer) {
-        transaction.type = TransactionType.SOL_TRANSFER;
-      }
-    }
-    
-    // Enhanced type detection based on program IDs
-    if (transaction.type === TransactionType.UNKNOWN && programIds.length > 0) {
-      transaction.type = determineTransactionTypeFromProgramIds(programIds);
+      transaction.type = determineTransactionType(rawTransaction, protocolInfo?.category);
     }
     
     return transaction;
@@ -141,11 +117,6 @@ export function transformHeliusTransaction(rawTransaction: any): Transaction | n
  */
 function extractProgramIds(rawTransaction: any): string[] {
   const programIds = new Set<string>();
-  
-  // Use provided program IDs if available
-  if (rawTransaction.programIds && Array.isArray(rawTransaction.programIds)) {
-    rawTransaction.programIds.forEach((id: string) => programIds.add(id));
-  }
   
   // Extract from message instruction program IDs (standard Solana RPC format)
   if (rawTransaction.transaction?.message?.instructions) {
@@ -218,126 +189,75 @@ function extractProgramIds(rawTransaction: any): string[] {
 }
 
 /**
- * Determine transaction type based on program IDs
- */
-function determineTransactionTypeFromProgramIds(programIds: string[]): TransactionType {
-  // Check against known protocol program IDs
-  for (const programId of programIds) {
-    // System program: SOL transfers
-    if (programId === '11111111111111111111111111111111') {
-      return TransactionType.SOL_TRANSFER;
-    }
-    
-    // Token Program: Token transfers
-    if (programId === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
-      return TransactionType.TOKEN_TRANSFER;
-    }
-    
-    // Associated Token Account Program
-    if (programId === 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL') {
-      return TransactionType.TOKEN_TRANSFER;
-    }
-    
-    // Metaplex NFT-related
-    if (programId === 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s') {
-      return TransactionType.NFT_SALE;
-    }
-    
-    // Jupiter DEX
-    if (programId === 'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB' ||
-        programId === 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4') {
-      return TransactionType.SWAP;
-    }
-    
-    // Raydium DEX
-    if (programId === '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8') {
-      return TransactionType.SWAP;
-    }
-    
-    // Orca DEX
-    if (programId === 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc' ||
-        programId === '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP') {
-      return TransactionType.SWAP;
-    }
-    
-    // Marinade staking
-    if (programId === 'MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD') {
-      return TransactionType.STAKE;
-    }
-    
-    // Lido staking
-    if (programId === 'CrX7kMhLC3cSsXJdT7JDgqrRVWGnUpX3gfEfxxU2NVLi') {
-      return TransactionType.STAKE;
-    }
-    
-    // Check protocol database for any other mappings
-    const protocol = PROGRAM_ID_TO_PROTOCOL.get(programId);
-    if (protocol) {
-      return mapProtocolToTransactionType(protocol.category);
-    }
-  }
-  
-  return TransactionType.UNKNOWN;
-}
-
-/**
  * Determine the type of transaction based on its contents
  */
-function determineTransactionType(rawTransaction: any, programIds: string[]): TransactionType {
-  // Check if it's a SOL transfer by looking at balances
-  if (rawTransaction.meta?.preBalances && rawTransaction.meta?.postBalances) {
-    const preBalances = rawTransaction.meta.preBalances;
-    const postBalances = rawTransaction.meta.postBalances;
-    
-    // Check if any balances changed, indicating possible SOL transfer
-    let balanceChanged = false;
-    for (let i = 0; i < Math.min(preBalances.length, postBalances.length); i++) {
-      if (preBalances[i] !== postBalances[i]) {
-        balanceChanged = true;
-        break;
-      }
-    }
-    
-    // If balances changed and there are no token transfers, it's likely a SOL transfer
-    if (balanceChanged && 
-        (!rawTransaction.meta.preTokenBalances || rawTransaction.meta.preTokenBalances.length === 0) &&
-        (!rawTransaction.meta.postTokenBalances || rawTransaction.meta.postTokenBalances.length === 0)) {
-      return TransactionType.SOL_TRANSFER;
+function determineTransactionType(rawTransaction: any, protocolCategory?: string): TransactionType {
+  // If we have a protocol category, use that to determine the type
+  if (protocolCategory) {
+    switch (protocolCategory) {
+      case 'DEX':
+        return TransactionType.SWAP;
+      case 'Lending':
+        return TransactionType.BORROW;
+      case 'Staking':
+        return TransactionType.STAKE;
+      case 'NFT':
+        return TransactionType.NFT_SALE;
+      case 'Stableswap':
+        return TransactionType.SWAP;
     }
   }
-  
-  // Check for token transfers
+
+  // Check for token transfers by examining pre/post token balances
   if (rawTransaction.meta?.preTokenBalances?.length > 0 || 
       rawTransaction.meta?.postTokenBalances?.length > 0) {
     return TransactionType.TOKEN_TRANSFER;
   }
   
-  // Check for specific program IDs
-  return determineTransactionTypeFromProgramIds(programIds);
-}
-
-/**
- * Map protocol categories to transaction types
- */
-function mapProtocolToTransactionType(category: string): TransactionType {
-  switch (category) {
-    case 'dex':
-      return TransactionType.SWAP;
-    case 'lending':
-      return TransactionType.LENDING_DEPOSIT; // Default to deposit, will be refined later
-    case 'nft':
-      return TransactionType.NFT_SALE;
-    case 'staking':
-      return TransactionType.STAKE;
-    case 'yield':
-      return TransactionType.LIQUIDITY_ADD; // Default, will be refined later
-    case 'bridge':
-      return TransactionType.BRIDGE_TRANSFER;
-    case 'governance':
-      return TransactionType.GOVERNANCE_VOTE;
-    default:
-      return TransactionType.UNKNOWN;
+  // Check for SOL transfers by examining pre/post balances
+  if (rawTransaction.meta?.preBalances && rawTransaction.meta?.postBalances) {
+    const preBalances = rawTransaction.meta.preBalances;
+    const postBalances = rawTransaction.meta.postBalances;
+    
+    // If balances changed and it's not a token transfer, it might be a SOL transfer
+    if (preBalances.some((pre: number, i: number) => pre !== postBalances[i])) {
+      return TransactionType.SOL_TRANSFER;
+    }
   }
+  
+  // Check for Helius-specific tokenTransfers field (if it exists)
+  if (rawTransaction.tokenTransfers?.length > 0) {
+    return TransactionType.TOKEN_TRANSFER;
+  }
+  
+  // Check for Helius-specific nativeTransfers field (if it exists)
+  if (rawTransaction.nativeTransfers?.length > 0) {
+    return TransactionType.SOL_TRANSFER;
+  }
+  
+  // Check for known program IDs
+  const programIds = extractProgramIds(rawTransaction);
+  
+  // Example checks for specific programs
+  if (programIds.includes('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin')) { // Serum v3
+    return TransactionType.SWAP;
+  }
+  
+  if (programIds.includes('metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s')) { // Metaplex
+    return TransactionType.NFT_SALE;
+  }
+  
+  // Check Jupiter DEX aggregator program ID for swaps
+  if (programIds.includes('JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB')) {
+    return TransactionType.SWAP;
+  }
+  
+  // Check for Marinade staking program
+  if (programIds.includes('MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD')) {
+    return TransactionType.STAKE;
+  }
+  
+  return TransactionType.UNKNOWN;
 }
 
 /**
@@ -348,20 +268,24 @@ export function transformWalletData(address: string, accountInfo: any, transacti
   
   let tokenBalances: any[] = [];
   
-  // Extract token balances from transactions
+  // Try to extract token balances from transactions
   if (transactions.length > 0) {
+    // This is a simplified approach - in a real app, you'd want to track the latest
+    // state of each token by looking at the most recent transactions
     const tokenMap = new Map<string, any>();
     
+    // Look through transactions to find token balances
     transactions.forEach(tx => {
       if (tx.tokenTransfers) {
         tx.tokenTransfers.forEach(transfer => {
+          // If this wallet is the recipient, record the token balance
           if (transfer.toUserAccount === address) {
             tokenMap.set(transfer.mint, {
               mint: transfer.mint,
               symbol: transfer.symbol || undefined,
               amount: transfer.amount,
-              decimals: 0,
-              uiAmount: transfer.amount,
+              decimals: 0, // This would need to be extracted from the token metadata
+              uiAmount: transfer.amount, // This is simplified
             });
           }
         });
@@ -371,7 +295,9 @@ export function transformWalletData(address: string, accountInfo: any, transacti
     tokenBalances = Array.from(tokenMap.values());
   }
   
-  // Create the basic wallet object
+  // Determine wallet type based on transaction patterns
+  let walletType = determineWalletType(address, transactions);
+  
   const wallet: Wallet = {
     address,
     balance: lamports,
@@ -387,48 +313,49 @@ export function transformWalletData(address: string, accountInfo: any, transacti
         tx.timestamp > latest ? tx.timestamp : latest, 
         transactions[0].timestamp) : 
       undefined,
+    type: walletType as any,  // Add type assertion
   };
-  
-  // Initial wallet type determination
-  wallet.type = determineWalletType(wallet, transactions);
   
   return wallet;
 }
 
 /**
- * Determine wallet type based on characteristics
+ * Determine the type of a wallet based on its transaction patterns
  */
-function determineWalletType(wallet: Wallet, transactions: Transaction[]): WalletType {
-  // If it has a very high balance, it might be an exchange
-  if (wallet.balance > 1000 * 1e9) { // 1000 SOL
-    return WalletType.EXCHANGE;
-  }
+function determineWalletType(address: string, transactions: Transaction[]): string {
+  if (transactions.length === 0) return 'unknown';
   
-  // If it has program-owned accounts or a large number of token types, it might be a protocol
-  if (wallet.tokenBalances && wallet.tokenBalances.length > 20) {
-    return WalletType.PROTOCOL;
-  }
-  
-  // If it has many transactions, it's likely a high-activity user or a protocol
-  if (wallet.transactionCount && wallet.transactionCount > 500) {
-    return WalletType.PROTOCOL;
-  }
-  
-  // Look for program signature patterns to identify protocol wallets
-  const hasProgramPatterns = transactions.some(tx => {
-    // Check for program ID signatures
-    return tx.programIds && tx.programIds.some(programId => {
-      const protocol = PROGRAM_ID_TO_PROTOCOL.get(programId);
-      return !!protocol;
-    });
+  // Count transaction types
+  const typeCounts: Record<string, number> = {};
+  transactions.forEach(tx => {
+    const type = tx.type || 'unknown';
+    typeCounts[type] = (typeCounts[type] || 0) + 1;
   });
   
-  if (hasProgramPatterns) {
-    return WalletType.PROTOCOL;
+  // Check if this is a high-volume trading wallet
+  const swapCount = typeCounts[TransactionType.SWAP] || 0;
+  if (swapCount > 5) return 'exchange';
+  
+  // Check if this is a protocol wallet (many transactions from the same program)
+  const protocolCounts: Record<string, number> = {};
+  transactions.forEach(tx => {
+    if (tx.protocol) {
+      protocolCounts[tx.protocol] = (protocolCounts[tx.protocol] || 0) + 1;
+    }
+  });
+  
+  // If more than 50% of transactions are from the same protocol, it might be a protocol wallet
+  const totalTxs = transactions.length;
+  for (const [protocol, count] of Object.entries(protocolCounts)) {
+    if (count / totalTxs > 0.5) return 'protocol';
   }
   
+  // If there are NFT transactions, it might be an NFT collector
+  const nftCount = typeCounts[TransactionType.NFT_SALE] || 0;
+  if (nftCount > 0) return 'nft_collector';
+  
   // Default to user
-  return WalletType.USER;
+  return 'user';
 }
 
 /**
@@ -437,11 +364,11 @@ function determineWalletType(wallet: Wallet, transactions: Transaction[]): Walle
 export function generateWalletConnections(transactions: Transaction[]): WalletConnection[] {
   const connectionMap = new Map<string, WalletConnection>();
   
-  // Process token transfers if available
+  // First check if we have tokenTransfers data
   const hasTokenTransfers = transactions.some(tx => tx.tokenTransfers && tx.tokenTransfers.length > 0);
   
   if (hasTokenTransfers) {
-    // Process based on token transfers
+    // Process based on token transfers if available
     transactions.forEach(transaction => {
       if (!transaction.tokenTransfers) return;
       
@@ -466,66 +393,53 @@ export function generateWalletConnections(transactions: Transaction[]): WalletCo
             target,
             value: transfer.amount,
             transactions: 1,
-            lastInteraction: transaction.timestamp
+            lastInteraction: transaction.timestamp,
           });
         }
       });
     });
   } else {
-    // For transactions without token transfers, use accounts
+    // For simplified transaction data, extract accounts involved
     transactions.forEach(transaction => {
-      if (!transaction.accounts || transaction.accounts.length < 2) {
-        // If no accounts, try to extract from the transaction's signature
-        if (transaction.signature) {
-          const source = transaction.signature.substring(0, 8);
-          const target = transaction.signature.substring(8, 16);
+      if (!transaction.accounts || transaction.accounts.length < 2) return;
+      
+      // Get unique accounts from the transaction
+      const accounts = [...new Set(transaction.accounts)];
+      
+      // Create connections between accounts
+      // This is simplified - in reality, you'd want to analyze the instructions to determine
+      // the actual flow of funds between accounts
+      for (let i = 0; i < accounts.length; i++) {
+        for (let j = i + 1; j < accounts.length; j++) {
+          const source = accounts[i];
+          const target = accounts[j];
+          
+          if (source === target) continue;
           
           const key = `${source}-${target}`;
-          const existingConnection = connectionMap.get(key);
+          const reverseKey = `${target}-${source}`;
           
-          if (existingConnection) {
-            existingConnection.transactions += 1;
-            if (transaction.timestamp > existingConnection.lastInteraction) {
-              existingConnection.lastInteraction = transaction.timestamp;
+          if (connectionMap.has(key)) {
+            const connection = connectionMap.get(key)!;
+            connection.transactions += 1;
+            if (transaction.timestamp > connection.lastInteraction) {
+              connection.lastInteraction = transaction.timestamp;
+            }
+          } else if (connectionMap.has(reverseKey)) {
+            const connection = connectionMap.get(reverseKey)!;
+            connection.transactions += 1;
+            if (transaction.timestamp > connection.lastInteraction) {
+              connection.lastInteraction = transaction.timestamp;
             }
           } else {
             connectionMap.set(key, {
               source,
               target,
-              value: 1, // Default value
+              value: 1, // Placeholder value since we don't know the actual value
               transactions: 1,
-              lastInteraction: transaction.timestamp
+              lastInteraction: transaction.timestamp,
             });
           }
-        }
-        return;
-      }
-      
-      // Use the first account as source and potentially interacting accounts as targets
-      const source = transaction.accounts[0];
-      
-      // Create connections with other accounts (simplified approach)
-      for (let i = 1; i < Math.min(transaction.accounts.length, 5); i++) {
-        const target = transaction.accounts[i];
-        
-        if (source === target) continue;
-        
-        const key = `${source}-${target}`;
-        const existingConnection = connectionMap.get(key);
-        
-        if (existingConnection) {
-          existingConnection.transactions += 1;
-          if (transaction.timestamp > existingConnection.lastInteraction) {
-            existingConnection.lastInteraction = transaction.timestamp;
-          }
-        } else {
-          connectionMap.set(key, {
-            source,
-            target,
-            value: 1, // Default value
-            transactions: 1,
-            lastInteraction: transaction.timestamp
-          });
         }
       }
     });
