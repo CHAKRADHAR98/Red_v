@@ -36,7 +36,6 @@ export default function TransactionList({
               <tr>
                 <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Signature</th>
                 <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Time</th>
-                <th className="px-4 py-3 text-xs font-medium tracking-wider text-left text-gray-500 uppercase">Type</th>
                 <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-3 text-xs font-medium tracking-wider text-right text-gray-500 uppercase">Actions</th>
               </tr>
@@ -55,22 +54,12 @@ export default function TransactionList({
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {format(transaction.timestamp, 'MMM d, h:mm a')}
                   </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    <span className="px-2 py-1 text-xs font-medium capitalize rounded-full bg-gray-100">
-                      {transaction.type?.replace(/_/g, ' ') || 'unknown'}
-                    </span>
-                    {transaction.protocol && (
-                      <span className="ml-1 px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
-                        {transaction.protocol}
-                      </span>
-                    )}
-                  </td>
                   <td className="px-4 py-3 text-sm text-right">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       transaction.status === TransactionStatus.SUCCESS 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
-                        }`}>
+                    }`}>
                       {transaction.status}
                     </span>
                   </td>
@@ -99,7 +88,7 @@ export default function TransactionList({
               
               {transactions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-sm text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-sm text-center text-gray-500">
                     No transactions found
                   </td>
                 </tr>

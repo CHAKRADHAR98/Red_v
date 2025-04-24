@@ -1,4 +1,3 @@
-// src/components/transaction/TransactionModal.tsx
 import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { XMarkIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
@@ -104,17 +103,6 @@ export default function TransactionModal({
                             </div>
                           </div>
                         </div>
-                        
-                        {transaction.type && (
-                          <div className="rounded-md bg-gray-50 p-4 shadow-sm">
-                            <h4 className="text-sm font-medium text-gray-900">Transaction Type</h4>
-                            <div className="mt-2">
-                              <span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800">
-                                {transaction.type.replace(/_/g, ' ')}
-                              </span>
-                            </div>
-                          </div>
-                        )}
                         
                         {transaction.accounts && transaction.accounts.length > 0 && (
                           <div className="rounded-md bg-gray-50 p-4 shadow-sm">

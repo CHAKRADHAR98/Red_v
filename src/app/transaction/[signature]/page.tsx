@@ -6,13 +6,8 @@ import { getEnhancedTransactions } from '../../../services/helius';
 import { transformHeliusTransaction } from '../../../lib/utils/transformers';
 import { Transaction, TransactionStatus } from '../../../types/transaction';
 import Link from 'next/link';
-import { 
-    ArrowLeftIcon, 
-    ArrowTopRightOnSquareIcon as ExternalLinkIcon, 
-    ClockIcon, 
-    CheckCircleIcon, 
-    XCircleIcon 
-  } from '@heroicons/react/24/outline';import { format } from 'date-fns';
+import { ArrowLeftIcon, ArrowTopRightOnSquareIcon as ExternalLinkIcon, ClockIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { format } from 'date-fns';
 
 export default function TransactionPage() {
   const { signature } = useParams();
@@ -132,12 +127,6 @@ export default function TransactionPage() {
             <div>
               <p className="text-xs text-gray-500">Fee</p>
               <p className="text-sm text-gray-800 mt-1">{(transaction.fee / 1e9).toFixed(6)} SOL</p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Type</p>
-              <p className="text-sm text-gray-800 mt-1 capitalize">
-                {transaction.type?.replace(/_/g, ' ') || 'Unknown'}
-              </p>
             </div>
           </div>
         </div>
