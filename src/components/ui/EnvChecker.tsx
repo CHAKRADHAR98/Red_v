@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import EnvSetupGuide from './EnvSetupGuide';
+import { hasHeliusConfig } from '../../lib/utils/env';
 
 export default function EnvChecker() {
   const [hasHeliusApiKey, setHasHeliusApiKey] = useState<boolean | null>(null);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
   
   useEffect(() => {
-    // Check if the API key is configured
-    const apiUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
-    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    // Check if the API key is configured using our utility
+    setHasHeliusApiKey(hasHeliusConfig());
     
-    setHasHeliusApiKey(!!apiUrl && (apiUrl.includes('api-key=') || !!apiKey));
+    // Debug log - remove in production
+    console.log('Env check - API key found:', hasHeliusConfig());
   }, []);
   
   // Show loading indicator while checking

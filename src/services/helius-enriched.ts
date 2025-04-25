@@ -1,5 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { showError } from '../lib/utils/notifications';
+import { getHeliusApiKey } from '../lib/utils/env';
 
 /**
  * Get transaction history for a wallet address using Helius API
@@ -19,11 +20,14 @@ export async function getWalletTransactions(address: string, limit: number = 50)
       return [];
     }
     
-    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    // Get API key from environment utilities
+    const apiKey = getHeliusApiKey();
     if (!apiKey) {
       console.error('Helius API key is not configured');
       return [];
     }
+    
+    console.log('Using Helius API key for transactions:', apiKey.substring(0, 5) + '...');
     
     // Use direct Helius API endpoint
     const url = `https://api.helius.xyz/v0/addresses/${address}/transactions?api-key=${apiKey}&limit=${limit}`;
@@ -55,7 +59,8 @@ export async function getTransactionDetails(signature: string): Promise<any | nu
       return null;
     }
     
-    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    // Get API key from environment utilities
+    const apiKey = getHeliusApiKey();
     if (!apiKey) {
       console.error('Helius API key is not configured');
       return null;
@@ -90,7 +95,8 @@ export async function getAddressNames(addresses: string[]): Promise<Record<strin
       return {};
     }
     
-    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    // Get API key from environment utilities
+    const apiKey = getHeliusApiKey();
     if (!apiKey) {
       console.error('Helius API key is not configured');
       return {};
@@ -149,11 +155,14 @@ export async function getWalletBalances(address: string): Promise<any> {
       return null;
     }
     
-    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    // Get API key from environment utilities
+    const apiKey = getHeliusApiKey();
     if (!apiKey) {
       console.error('Helius API key is not configured');
       return null;
     }
+    
+    console.log('Using Helius API key for balances:', apiKey.substring(0, 5) + '...');
     
     // Use direct Helius API endpoint
     const url = `https://api.helius.xyz/v0/addresses/${address}/balances?api-key=${apiKey}`;

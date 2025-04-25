@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Wallet, TokenBalance } from '../../types/wallet';
 import { formatDistanceToNow } from 'date-fns';
 import { 
-    ArrowTopRightOnSquareIcon as ExternalLinkIcon, 
-    ChartBarIcon,
-    BanknotesIcon as CashIcon,
-    ClockIcon,
-    TagIcon,
-    CpuChipIcon as ChipIcon  // Alternative replacement
+  ArrowTopRightOnSquareIcon as ExternalLinkIcon, 
+  ChartBarIcon,
+  BanknotesIcon as CashIcon,
+  ClockIcon,
+  TagIcon,
+  CpuChipIcon as ChipIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 
@@ -18,13 +18,19 @@ interface EnhancedWalletInfoProps {
 export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) {
   const [showAllTokens, setShowAllTokens] = useState(false);
   
-  // Sort tokens by value (approximate)
-  const sortedTokens = wallet.tokenBalances ? 
-    [...wallet.tokenBalances].sort((a, b) => {
-      const aValue = (a.uiAmount || a.amount / Math.pow(10, a.decimals)) || 0;
-      const bValue = (b.uiAmount || b.amount / Math.pow(10, b.decimals)) || 0;
-      return bValue - aValue;
+  // Filter out zero balance tokens
+  const nonZeroTokens = wallet.tokenBalances ? 
+    wallet.tokenBalances.filter(token => {
+      const balance = token.uiAmount || (token.amount / Math.pow(10, token.decimals));
+      return balance > 0;
     }) : [];
+  
+  // Sort tokens by value (approximate)
+  const sortedTokens = [...nonZeroTokens].sort((a, b) => {
+    const aValue = (a.uiAmount || a.amount / Math.pow(10, a.decimals)) || 0;
+    const bValue = (b.uiAmount || b.amount / Math.pow(10, b.decimals)) || 0;
+    return bValue - aValue;
+  });
   
   // Show only top 5 tokens by default
   const displayTokens = showAllTokens ? sortedTokens : sortedTokens.slice(0, 5);
@@ -77,9 +83,9 @@ export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) 
           </div>
           <div className="mt-2">
             <p className="text-2xl font-semibold">{(wallet.balance / 1e9).toFixed(4)} SOL</p>
-            {wallet.tokenBalances && wallet.tokenBalances.length > 0 && (
+            {nonZeroTokens.length > 0 && (
               <p className="text-sm text-gray-500 mt-1">
-                + {wallet.tokenBalances.length} token{wallet.tokenBalances.length !== 1 ? 's' : ''}
+                + {nonZeroTokens.length} token{nonZeroTokens.length !== 1 ? 's' : ''}
               </p>
             )}
           </div>
@@ -136,29 +142,42 @@ export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) 
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {displayTokens.map((token, index) => (
-                  <tr key={index} className="hover:bg-gray-100">
-                    <td className="px-3 py-2">
-                      <div className="flex items-center">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-800">
-                          {token.symbol ? token.symbol[0] : 'T'}
-                        </div>
-                        <div className="ml-2">
-                          <div className="text-sm font-medium text-gray-900">
-                            {token.symbol || 'Unknown'}
+                {displayTokens.map((token, index) => {
+                  const tokenAmount = token.uiAmount || (token.amount / Math.pow(10, token.decimals));
+                  return (
+                    <tr key={index} className="hover:bg-gray-100">
+                      <td className="px-3 py-2">
+                        <div className="flex items-center">
+                          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-medium text-blue-800">
+                            {token.symbol ? token.symbol[0] : 'T'}
                           </div>
-                          <div className="text-xs text-gray-500 font-mono truncate max-w-xs">
-                            {token.mint.slice(0, 8)}...{token.mint.slice(-4)}
+                          <div className="ml-2">
+                            <div className="text-sm font-medium text-gray-900">
+                              {token.symbol || 'Unknown'}
+                            </div>
+                            <div className="text-xs text-gray-500 font-mono truncate max-w-xs">
+                              {token.mint.slice(0, 8)}...{token.mint.slice(-4)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-sm text-right text-gray-900 font-medium">
-                      {token.uiAmount?.toLocaleString() || 
-                        (token.amount / Math.pow(10, token.decimals)).toLocaleString()}
+                      </td>
+                      <td className="px-3 py-2 text-sm text-right text-gray-900 font-medium">
+                        {tokenAmount > 0 ? tokenAmount.toLocaleString(undefined, {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 6
+                        }) : '0'}
+                      </td>
+                    </tr>
+                  );
+                })}
+                
+                {displayTokens.length === 0 && (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-4 text-center text-sm text-gray-500">
+                      No tokens with balance found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
             

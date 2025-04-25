@@ -93,9 +93,7 @@ export default function EnhancedHome() {
       {wallet && !isLoading && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <EnhancedWalletInfo wallet={wallet} />
-          <TransactionList 
-            transactions={transactions} 
-          />
+          <TransactionList transactions={transactions} />
         </div>
       )}
 
