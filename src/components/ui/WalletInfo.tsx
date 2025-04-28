@@ -22,11 +22,6 @@ export default function WalletInfo({ wallet }: WalletInfoProps) {
           <p className="text-lg font-medium">{(wallet.balance / 1e9).toFixed(4)} SOL</p>
         </div>
 
-        <div>
-          <h3 className="text-sm font-medium text-gray-500">Transactions</h3>
-          <p className="text-lg font-medium">{wallet.transactionCount}</p>
-        </div>
-
         {wallet.label && (
           <div>
             <h3 className="text-sm font-medium text-gray-500">Label</h3>

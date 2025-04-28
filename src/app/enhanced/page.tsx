@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import WalletSearch from '../../components/ui/WalletSearch';
 import EnhancedWalletInfo from '../../components/ui/EnhancedWalletInfo';
-import TransactionList from '../../components/ui/TransactionList';
+import SimplifiedTransactionList from '../../components/ui/SimplifiedTransactionList';
 import { useEnhancedWalletData } from '../../hooks/useEnhancedWalletData';
 import EnvChecker from '../../components/ui/EnvChecker';
 import { showSuccess, showError, showInfo } from '../../lib/utils/notifications';
@@ -93,7 +93,10 @@ export default function EnhancedHome() {
       {wallet && !isLoading && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <EnhancedWalletInfo wallet={wallet} />
-          <TransactionList transactions={transactions} />
+          <SimplifiedTransactionList 
+            transactions={transactions}
+            accountNames={accountNames}
+          />
         </div>
       )}
 

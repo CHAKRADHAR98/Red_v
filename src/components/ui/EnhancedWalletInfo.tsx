@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Wallet, TokenBalance } from '../../types/wallet';
-import { formatDistanceToNow } from 'date-fns';
 import { 
   ArrowTopRightOnSquareIcon as ExternalLinkIcon, 
   ChartBarIcon,
   BanknotesIcon as CashIcon,
-  ClockIcon,
   TagIcon,
   CpuChipIcon as ChipIcon
 } from '@heroicons/react/24/outline';
@@ -103,29 +101,6 @@ export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) 
         </div>
       </div>
       
-      <div className="mt-6">
-        <div className="flex items-center mb-2">
-          <ClockIcon className="h-5 w-5 text-gray-500 mr-2" />
-          <h3 className="text-base font-medium">Activity Timeline</h3>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-          {wallet.firstActivityAt && (
-            <div className="bg-gray-50 rounded p-3">
-              <p className="text-xs text-gray-500">First Activity</p>
-              <p className="text-sm font-medium">{formatDistanceToNow(wallet.firstActivityAt)} ago</p>
-            </div>
-          )}
-          
-          {wallet.lastActivityAt && (
-            <div className="bg-gray-50 rounded p-3">
-              <p className="text-xs text-gray-500">Last Activity</p>
-              <p className="text-sm font-medium">{formatDistanceToNow(wallet.lastActivityAt)} ago</p>
-            </div>
-          )}
-        </div>
-      </div>
-      
       {displayTokens.length > 0 && (
         <div className="mt-6">
           <div className="flex items-center mb-2">
@@ -139,6 +114,7 @@ export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) 
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token</th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -167,13 +143,26 @@ export default function EnhancedWalletInfo({ wallet }: EnhancedWalletInfoProps) 
                           maximumFractionDigits: 6
                         }) : '0'}
                       </td>
+                      <td className="px-3 py-2 text-sm text-right">
+                        <div className="flex items-center justify-end space-x-2">
+                          <a
+                            href={`https://explorer.solana.com/address/${token.mint}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-gray-500 hover:text-gray-700"
+                            title="View on Solana Explorer"
+                          >
+                            <ExternalLinkIcon className="h-4 w-4" />
+                          </a>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
                 
                 {displayTokens.length === 0 && (
                   <tr>
-                    <td colSpan={2} className="px-3 py-4 text-center text-sm text-gray-500">
+                    <td colSpan={3} className="px-3 py-4 text-center text-sm text-gray-500">
                       No tokens with balance found
                     </td>
                   </tr>

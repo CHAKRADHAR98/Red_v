@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getWalletTransactions, getWalletBalances, getAddressNames } from '../services/helius-enriched';
-import { transformHeliusTransaction, transformWalletData } from '../lib/utils/transformers';
+import { transformHeliusTransaction } from '../lib/utils/transformers';
 import { Wallet } from '../types/wallet';
 import { Transaction } from '../types/transaction';
 import { PublicKey } from '@solana/web3.js';
@@ -71,18 +71,27 @@ export function useEnhancedWalletData(address: string) {
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Calculate accurate first and last activity timestamps
-  const firstActivity = transactionsQuery.data && transactionsQuery.data.length > 0 
-    ? transactionsQuery.data.reduce((earliest, tx) => {
-        return tx.timestamp < earliest ? tx.timestamp : earliest;
-      }, transactionsQuery.data[transactionsQuery.data.length - 1].timestamp)
-    : undefined;
+  // Calculate first and last activity timestamps
+  let firstActivityAt = undefined;
+  let lastActivityAt = undefined;
+  
+  if (transactionsQuery.data && transactionsQuery.data.length > 0) {
+    // Find the earliest transaction timestamp
+    firstActivityAt = transactionsQuery.data.reduce((earliest, tx) => {
+      const txTime = tx.timestamp instanceof Date ? tx.timestamp : new Date(tx.timestamp);
+      return txTime < earliest ? txTime : earliest;
+    }, transactionsQuery.data[0].timestamp instanceof Date ? 
+       transactionsQuery.data[0].timestamp : 
+       new Date(transactionsQuery.data[0].timestamp));
     
-  const lastActivity = transactionsQuery.data && transactionsQuery.data.length > 0 
-    ? transactionsQuery.data.reduce((latest, tx) => {
-        return tx.timestamp > latest ? tx.timestamp : latest;
-      }, transactionsQuery.data[0].timestamp)
-    : undefined;
+    // Find the latest transaction timestamp
+    lastActivityAt = transactionsQuery.data.reduce((latest, tx) => {
+      const txTime = tx.timestamp instanceof Date ? tx.timestamp : new Date(tx.timestamp);
+      return txTime > latest ? txTime : latest;
+    }, transactionsQuery.data[0].timestamp instanceof Date ? 
+       transactionsQuery.data[0].timestamp : 
+       new Date(transactionsQuery.data[0].timestamp));
+  }
 
   // Determine wallet type based on transactions
   const walletType = determineWalletType(transactionsQuery.data || []);
@@ -102,8 +111,8 @@ export function useEnhancedWalletData(address: string) {
         uiAmount: token.amount ? token.amount / Math.pow(10, token.decimals || 0) : 0,
       })) || [],
       transactionCount: transactionsQuery.data?.length || 0,
-      firstActivityAt: firstActivity,
-      lastActivityAt: lastActivity,
+      firstActivityAt,
+      lastActivityAt,
       name: namesQuery.data?.[address],
     };
     
