@@ -94,6 +94,16 @@ export default function Navigation() {
           >
             Visualization
           </Link>
+          <Link
+            href="/tokens"
+            className={`block py-2 pl-3 pr-4 text-base font-medium ${
+              isActive('/tokens') 
+                ? 'bg-blue-50 border-l-4 border-blue-500 text-blue-700'
+                : 'border-l-4 border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-800'
+            }`}
+          >
+            Token Explorer
+          </Link>
         </div>
       </div>
     </nav>
