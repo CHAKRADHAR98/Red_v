@@ -1,66 +1,76 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { ReactFlowProvider } from 'reactflow';
+import { ThemeProvider } from '../../context/ThemeContext';
+import EnvChecker from '../../components/ui/EnvChecker';
 import Link from 'next/link';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
+
+// Dynamically import the SolanaVisualizer component to avoid SSR issues with ReactFlow
+const SolanaVisualizer = dynamic(
+  () => import('../../components/visualization/SolanaVisualizer'),
+  { ssr: false } // This will only load the component on the client
+);
 
 export default function VisualizationPage() {
+  const [isClient, setIsClient] = useState(false);
+
+  // Used to ensure we only render the component on the client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   return (
     <div className="space-y-6">
-      <div className="p-6 bg-white rounded-lg shadow">
-        <h1 className="text-2xl font-bold mb-4">Blockchain Visualization</h1>
-        <p className="text-gray-600 mb-6">
-          Choose a visualization mode to get started exploring Solana's blockchain data.
-        </p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <h2 className="text-xl font-semibold mb-2">Basic Visualization</h2>
-            <p className="text-gray-600 mb-4">
-              Simple wallet-to-wallet connections with basic transaction data.
-              Best for getting started and exploring the core functionality.
-            </p>
-            <Link
-              href="/visualize/basic"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Go to Basic View
-              <ArrowRightIcon className="ml-2 h-4 w-4" />
-            </Link>
-          </div>
-          
-          <div className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-blue-50">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-semibold">Enhanced Visualization</h2>
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
-                New in Stage 2
-              </span>
-            </div>
-            <p className="text-gray-600 mb-4">
-              Advanced visualization with protocol detection, name resolution,
-              and interactive filtering. Recommended for detailed analysis.
-            </p>
-            <Link
-              href="/visualize/enhanced"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-            >
-              Go to Enhanced View
-              <ArrowRightIcon className="ml-2 h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
+      <EnvChecker />
       
       <div className="p-6 bg-white rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Getting Started</h2>
-        <ol className="list-decimal list-inside space-y-2 text-gray-600">
-          <li>Select one of the visualization modes above</li>
-          <li>Enter a Solana wallet address to visualize</li>
-          <li>Search for additional addresses to expand the visualization</li>
-          <li>Use filters and controls to customize the view</li>
-          <li>Interact with the graph to explore relationships</li>
-        </ol>
+        <h1 className="text-2xl font-bold mb-4">Solana Blockchain Visualizer</h1>
+        <p className="text-gray-600 mb-6">
+          Explore the Solana blockchain through an interactive graph visualization. Enter a wallet address to see its connections.
+        </p>
+        
+        {/* Include a back button to the wallet explorer */}
+        <div className="mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Wallet Explorer
+          </Link>
+        </div>
+        
+        {/* Visualization container */}
+        <div className="h-[800px] border rounded-lg overflow-hidden">
+          {isClient && (
+            <ReactFlowProvider>
+              <ThemeProvider>
+                <SolanaVisualizer />
+              </ThemeProvider>
+            </ReactFlowProvider>
+          )}
+          {!isClient && (
+            <div className="h-full flex items-center justify-center bg-gray-100">
+              <div className="w-12 h-12 border-4 border-t-blue-500 border-blue-200 rounded-full animate-spin"></div>
+            </div>
+          )}
+        </div>
+        
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg border text-sm">
+          <h3 className="font-medium mb-2">How to use:</h3>
+          <ol className="list-decimal list-inside space-y-1">
+            <li>Enter a Solana wallet address in the search box</li>
+            <li>Click on nodes to see more details about a wallet</li>
+            <li>Double-click a node to explore its connections</li>
+            <li>Use the controls to zoom and pan the visualization</li>
+            <li>Click the history button to view previously searched addresses</li>
+          </ol>
+        </div>
       </div>
-      </div>
+    </div>
   );
 }
