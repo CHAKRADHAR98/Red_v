@@ -18,12 +18,19 @@ export default function TokenList({ onSelectToken, selectedToken }: TokenListPro
     const fetchTokens = async () => {
       try {
         setIsLoading(true);
+        console.log('Fetching token list...');
         const tokenData = await getTopTokens(100);
-        setTokens(tokenData);
-        setError(null);
+        console.log(`Fetched ${tokenData.length} tokens:`, tokenData);
+        
+        if (tokenData.length === 0) {
+          setError('No tokens returned from API');
+        } else {
+          setTokens(tokenData);
+          setError(null);
+        }
       } catch (err) {
         console.error('Error fetching tokens:', err);
-        setError('Failed to load token list');
+        setError('Failed to load token list: ' + (err instanceof Error ? err.message : 'Unknown error'));
       } finally {
         setIsLoading(false);
       }
@@ -133,6 +140,12 @@ export default function TokenList({ onSelectToken, selectedToken }: TokenListPro
                     </td>
                   </tr>
                 ))
+              ) : tokens.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-gray-500">
+                    No tokens available. Please check the API connection.
+                  </td>
+                </tr>
               ) : (
                 <tr>
                   <td colSpan={3} className="px-4 py-6 text-center text-gray-500">

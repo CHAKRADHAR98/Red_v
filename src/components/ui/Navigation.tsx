@@ -51,6 +51,16 @@ export default function Navigation() {
               >
                 Visualization
               </Link>
+              <Link
+                href="/tokens"
+                className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-b-2 ${
+                  isActive('/tokens') 
+                    ? 'border-blue-500 text-gray-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                }`}
+              >
+                Token Explorer
+              </Link>
             </div>
           </div>
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
