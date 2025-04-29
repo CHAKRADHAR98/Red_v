@@ -14,12 +14,8 @@ export default function Navigation() {
     <nav className="bg-white border-b border-gray-200">
       <div className="px-4 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex items-center shrink-0">
-              <Link href="/">
-                <span className="text-xl font-bold text-blue-600">SolanaViz</span>
-              </Link>
-            </div>
+          <div className="flex w-full">
+          
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               <Link
                 href="/"
@@ -62,11 +58,6 @@ export default function Navigation() {
                 Token Explorer
               </Link>
             </div>
-          </div>
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <span className="px-3 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">
-              Stage 2 - Enhanced Analysis
-            </span>
           </div>
         </div>
       </div>
